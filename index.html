@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snoopy: Aventura entre las nubes</title>
+<style>
+:root{--ink:#20344b;--cream:#fff8e8;--blue:#78d5f4;--gold:#ffcf4a;--pink:#ff8eaa}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(135deg,#172c48,#315f82);font-family:Trebuchet MS,Arial,sans-serif;color:var(--ink);min-height:100vh;display:grid;place-items:center;padding:18px}
+.shell{width:min(1100px,100%);background:var(--cream);border:5px solid #fff;border-radius:26px;box-shadow:0 22px 60px #07182c88;overflow:hidden}
+header{display:flex;align-items:center;justify-content:space-between;padding:13px 20px;background:#fffdf5;border-bottom:3px solid #e8dfca;gap:12px}
+.brand{font-weight:1000;font-size:clamp(17px,3vw,25px);letter-spacing:.5px}.brand span{color:#e28b25}
+.pill{background:#eaf7ff;border:2px solid #c5e7f5;border-radius:999px;padding:8px 13px;font-weight:800;font-size:13px}
+.stage{position:relative;background:#8edcf4;min-height:550px}
+canvas{display:block;width:100%;height:auto;aspect-ratio:16/9;max-height:620px;outline:none}
+.panel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:18px;background:linear-gradient(#173c5b55,#173c5b77)}
+.menu-card{width:min(680px,96%);background:#fffaf0;border:4px solid white;border-radius:25px;padding:24px;box-shadow:0 12px 35px #17314c55;text-align:center}
+h1{font-size:clamp(27px,5vw,48px);margin:4px 0 8px;color:#25415d;text-shadow:2px 2px #fff}
+.sub{margin:0 0 18px;color:#577086;font-weight:700}
+.tabs{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:12px 0 16px}
+button{border:0;border-radius:13px;padding:11px 16px;font-weight:900;font-size:14px;cursor:pointer;background:#e6eff5;color:#27445d;box-shadow:0 3px 0 #c2d3df;transition:.15s}
+button:hover{transform:translateY(-2px);filter:brightness(1.03)}button:active{transform:translateY(1px);box-shadow:none}
+button.primary{background:#ffcf4a;box-shadow:0 4px 0 #d99c25;color:#493715}
+button.selected{background:#c8f0d6;box-shadow:0 3px 0 #8bc9a4}
+.picker{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
+.pick{background:white;border:3px solid #e7e0d2;border-radius:16px;padding:10px 5px;cursor:pointer;font-weight:900}
+.pick.active{border-color:#ffbf35;background:#fff4ce;box-shadow:0 0 0 3px #ffcf4a44}
+.avatar{height:72px;display:grid;place-items:center;font-size:43px}
+.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:14px 0}
+.level{padding:14px 8px;background:#eaf7ff;border:3px solid #c9e8f4;border-radius:15px;cursor:pointer;font-weight:900}
+.level.active{border-color:#ffbf35;background:#fff1bd}
+.note{font-size:12px;color:#6c7d89;margin-top:12px}
+.hidden{display:none!important}
+.hud{position:absolute;left:14px;right:14px;top:12px;display:flex;justify-content:space-between;align-items:center;pointer-events:none;gap:8px}
+.hud span{background:#fffdf0eF;border:2px solid white;border-radius:13px;padding:8px 12px;font-weight:900;box-shadow:0 3px 8px #1a385533}
+.hud button{pointer-events:auto;padding:8px 11px}
+.bottom-help{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:12px 18px;background:#fffdf5;border-top:3px solid #e8dfca;color:#607386;font-size:13px;font-weight:700}
+.touch{display:none;position:absolute;bottom:14px;left:14px;right:14px;justify-content:space-between;pointer-events:none}
+.touch button{pointer-events:auto;background:#ffffffd9;font-size:20px;width:56px;height:52px;padding:0}
+@media(max-width:650px){.picker{grid-template-columns:repeat(2,1fr)}.levels{grid-template-columns:1fr}.menu-card{padding:15px}.stage{min-height:360px}.touch{display:flex}.bottom-help{font-size:11px}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header><div class="brand">☁️ SNOOPY <span>AVENTURA</span></div><div class="pill">⭐ Explora, salta y colecciona</div></header>
+<div class="stage">
+<canvas id="game" width="960" height="540" aria-label="Juego de plataformas"></canvas>
+<div id="menu" class="panel">
+ <div class="menu-card">
+  <h1>¡Una aventura genial!</h1><p class="sub">Acompaña a tus amigos en un viaje por mundos llenos de sorpresas.</p>
+  <div class="tabs"><button id="tabChars" class="selected">🐾 Personajes</button><button id="tabOutfits">🎩 Vestuario</button><button id="tabLevels">🗺️ Niveles</button></div>
+  <div id="charsPane"><div class="picker" id="characterPicker"></div></div>
+  <div id="outfitsPane" class="hidden"><p><b>Elige un estilo para tu personaje</b></p><div class="picker" id="outfitPicker"></div></div>
+  <div id="levelsPane" class="hidden"><p><b>Selecciona tu mundo</b></p><div class="levels" id="levelPicker"></div></div>
+  <button class="primary" id="startBtn">▶ JUGAR</button>
+  <p class="note">Controles: ← → o A / D para moverte · Espacio / ↑ para saltar · P para pausar</p>
+ </div>
+</div>
+<div id="endPanel" class="panel hidden"><div class="menu-card"><h1 id="endTitle">¡Buen trabajo!</h1><p id="endText" class="sub"></p><button class="primary" id="againBtn">↻ Volver a jugar</button> <button id="homeBtn">⌂ Menú principal</button></div></div>
+<div id="hud" class="hud hidden"><span id="score">⭐ 0</span><span id="worldName">🌳 El prado</span><span id="lives">❤️❤️❤️</span><button id="pauseBtn">Ⅱ</button><button id="menuBtn">⌂</button></div>
+<div class="touch" id="touch"><button data-key="left">◀</button><button data-key="jump">⬆</button><button data-key="right">▶</button></div>
+</div>
+<div class="bottom-help"><span>💡 Salta sobre las plataformas y recoge todas las estrellas.</span><span>Hecho para jugar en computadora y móvil.</span></div>
+</div>
+<script>
+(()=>{
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+const characters=[
+ {id:'snoopy',name:'Snoopy',emoji:'🐶',body:'#fff',ear:'#242a32'},
+ {id:'woodstock',name:'Woodstock',emoji:'🐤',body:'#ffd84d',ear:'#d69a21'},
+ {id:'charlie',name:'Charlie Brown',emoji:'🙂',body:'#ffca42',ear:'#6b4430'},
+ {id:'lucy',name:'Lucy',emoji:'👧',body:'#243e83',ear:'#30243a'}
+];
+const outfits=[{name:'Clásico',emoji:'🤍',color:'#fff'},{name:'Aventurero',emoji:'🧣',color:'#e94d52'},{name:'Estrella',emoji:'⭐',color:'#f6c744'},{name:'Deportivo',emoji:'💙',color:'#4b9ce2'}];
+const worlds=[
+ {name:'El prado soleado',sky:'#8cdef4',ground:'#62bd55',hill:'#54ad92',platform:'#dca15c',goal:'🏡',length:3200},
+ {name:'Bosque de caramelos',sky:'#ffc7d9',ground:'#69bd79',hill:'#c58bb9',platform:'#9a6bc0',goal:'🍭',length:3600},
+ {name:'Isla de las nubes',sky:'#9cb8fa',ground:'#e8c46c',hill:'#8298d7',platform:'#8d744c',goal:'☁️',length:3900}
+];
+let char=0,outfit=0,level=0,playing=false,paused=false,score=0,lives=3,camera=0,frame=0;
+let player,platforms,stars,foes,keys={left:false,right:false},jumpQueued=false,particles=[];
+const gravity=.62;
+function buildPickers(){
+ $('characterPicker').innerHTML=characters.map((c,i)=>`<div class="pick ${i===char?'active':''}" data-char="${i}"><div class="avatar">${c.emoji}</div>${c.name}</div>`).join('');
+ $('outfitPicker').innerHTML=outfits.map((o,i)=>`<div class="pick ${i===outfit?'active':''}" data-outfit="${i}"><div class="avatar">${o.emoji}</div>${o.name}</div>`).join('');
+ $('levelPicker').innerHTML=worlds.map((w,i)=>`<div class="level ${i===level?'active':''}" data-level="${i}">${['🌳','🍬','☁️'][i]}<br>${w.name}<br><small>${i===0?'Fácil':i===1?'Medio':'Desafío'}</small></div>`).join('');
+}
+buildPickers();
+$('characterPicker').onclick=e=>{let p=e.target.closest('[data-char]');if(p){char=+p.dataset.char;buildPickers()}};
+$('outfitPicker').onclick=e=>{let p=e.target.closest('[data-outfit]');if(p){outfit=+p.dataset.outfit;buildPickers()}};
+$('levelPicker').onclick=e=>{let p=e.target.closest('[data-level]');if(p){level=+p.dataset.level;buildPickers()}};
+function tab(which){['charsPane','outfitsPane','levelsPane'].forEach((id,i)=>$(id).classList.toggle('hidden',i!==which));['tabChars','tabOutfits','tabLevels'].forEach((id,i)=>$(id).classList.toggle('selected',i===which))}
+$('tabChars').onclick=()=>tab(0);$('tabOutfits').onclick=()=>tab(1);$('tabLevels').onclick=()=>tab(2);
+function start(){score=0;lives=3;camera=0;frame=0;paused=false;$('score').textContent='⭐ 0';$('lives').textContent='❤️❤️❤️';$('pauseBtn').textContent='Ⅱ';const w=worlds[level];player={x:70,y:380,vx:0,vy:0,w:40,h:58,on:false,inv:0};platforms=[{x:0,y:465,w:700,h:100},{x:780,y:465,w:620,h:100},{x:1480,y:465,w:700,h:100},{x:2260,y:465,w:500,h:100},{x:2820,y:465,w:600,h:100}];
+for(let x=180;x<w.length-220;){let y=360+Math.sin(x*.013)*65;let width=100+(Math.floor(x/170)%3)*25;platforms.push({x,y,w:width,h:18});x+=180+(Math.floor(x/180)%3)*55}
+stars=[];for(let x=260;x<w.length-120;x+=155){let p=platforms.filter(p=>p.x>x-100&&p.x<x+100&&p.y<450).sort((a,b)=>Math.abs(a.x-x)-Math.abs(b.x-x))[0];stars.push({x,y:p?Math.max(220,p.y-42):365,got:false,phase:Math.random()*6})}
+foes=[];for(let x=620;x<w.length-350;x+=560)foes.push({x,y:430,min:x-50,max:x+55,v:1.1,alive:true});
+$('menu').classList.add('hidden');$('endPanel').classList.add('hidden');$('hud').classList.remove('hidden');$('worldName').textContent=['🌳 El prado','🍬 Bosque dulce','☁️ Isla de nubes'][level];playing=true;loop()}
+function end(win){playing=false;$('hud').classList.add('hidden');$('endPanel').classList.remove('hidden');$('endTitle').textContent=win?'¡Nivel completado! 🎉':'¡Inténtalo otra vez!';$('endText').textContent=win?`Conseguiste ${score} estrellas. ¡Llegaste a ${worlds[level].goal}!`:`Recogiste ${score} estrellas. Puedes volver a intentarlo.`}
+function drawBg(){let w=worlds[level];ctx.fillStyle=w.sky;ctx.fillRect(0,0,960,540);
+for(let i=0;i<7;i++){let x=((i*210-camera*.22)%1250+1250)%1250-120;let y=90+(i%3)*70;ctx.fillStyle='#ffffffaa';ctx.beginPath();ctx.arc(x,y,28,0,7);ctx.arc(x+28,y-12,35,0,7);ctx.arc(x+62,y,25,0,7);ctx.fill()}
+ctx.fillStyle=w.hill;for(let i=0;i<7;i++){let x=((i*220-camera*.42)%1400+1400)%1400-180;ctx.beginPath();ctx.ellipse(x,440,130,85,0,0,7);ctx.fill()}
+}
+function drawPlayer(){let x=player.x-camera,y=player.y;ctx.save();ctx.translate(x,y);
+if(player.inv>0&&Math.floor(frame/5)%2===0)ctx.globalAlpha=.45;
+if(char===0){ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(20,27,18,25,0,0,7);ctx.fill();ctx.fillStyle='#242a32';ctx.beginPath();ctx.ellipse(8,12,8,15,-.35,0,7);ctx.fill();ctx.fillStyle='#171c22';ctx.beginPath();ctx.ellipse(36,24,10,5,0,0,7);ctx.fill();ctx.fillStyle='#151a20';ctx.beginPath();ctx.arc(23,17,2.3,0,7);ctx.fill();ctx.beginPath();ctx.arc(31,17,2.3,0,7);ctx.fill();ctx.fillStyle='#f2c94c';ctx.fillRect(13,49,14,5)}
+else if(char===1){ctx.fillStyle='#ffd84d';ctx.beginPath();ctx.ellipse(20,28,18,20,0,0,7);ctx.fill();ctx.beginPath();ctx.moveTo(9,12);ctx.lineTo(2,0);ctx.lineTo(17,10);ctx.fill();ctx.beginPath();ctx.moveTo(29,12);ctx.lineTo(39,1);ctx.lineTo(32,17);ctx.fill();ctx.fillStyle='#222';ctx.fillRect(14,22,3,3);ctx.fillRect(25,22,3,3)}
+else{ctx.fillStyle=char===2?'#ffca42':'#e5ad85';ctx.beginPath();ctx.arc(20,15,16,0,7);ctx.fill();ctx.fillStyle=char===2?'#fff':'#243e83';ctx.fillRect(4,30,32,22);ctx.fillStyle='#222';ctx.fillRect(14,14,3,3);ctx.fillRect(25,14,3,3);ctx.fillStyle='#333';ctx.fillRect(8,50,10,8);ctx.fillRect(23,50,10,8)}
+if(char===0){ctx.fillStyle=outfit===1?'#e94d52':outfit===2?'#f6c744':outfit===3?'#4b9ce2':'#fff';ctx.fillRect(6,37,28,13);ctx.fillStyle='#252525';ctx.fillRect(8,51,10,7);ctx.fillRect(24,51,10,7)}
+if(outfit===1&&char!==0){ctx.fillStyle='#e94d52';ctx.fillRect(5,31,30,5)}
+if(outfit===2){ctx.fillStyle='#f6c744';ctx.beginPath();ctx.arc(20,35,6,0,7);ctx.fill()}
+if(outfit===3){ctx.fillStyle='#4b9ce2';ctx.fillRect(6,35,28,14)}
+ctx.restore()}
+function draw(){drawBg();let w=worlds[level];ctx.save();ctx.translate(-camera,0);
+platforms.forEach((p,i)=>{ctx.fillStyle=i<5?w.ground:w.platform;ctx.fillRect(p.x,p.y,p.w,p.h);ctx.fillStyle=i<5?'#347b43':'#704b37';ctx.fillRect(p.x,p.y,p.w,5);if(i>=5){ctx.fillStyle='#ffffff33';for(let j=0;j<p.w;j+=24)ctx.fillRect(p.x+j,p.y+7,12,3)}});
+stars.forEach(s=>{if(!s.got){let yy=s.y+Math.sin(frame*.08+s.phase)*5;ctx.fillStyle='#ffcf36';ctx.strokeStyle='#b87917';ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<10;i++){let a=-Math.PI/2+i*Math.PI/5,r=i%2?9:18;let xx=s.x+Math.cos(a)*r, y=yy+Math.sin(a)*r;i?ctx.lineTo(xx,y):ctx.moveTo(xx,y)}ctx.closePath();ctx.fill();ctx.stroke()}});
+foes.forEach(f=>{if(!f.alive)return;ctx.fillStyle='#9b69a9';ctx.beginPath();ctx.ellipse(f.x,f.y,21,17,0,0,7);ctx.fill();ctx.fillStyle='#fff';ctx.fillRect(f.x-10,f.y-5,6,7);ctx.fillRect(f.x+4,f.y-5,6,7);ctx.fillStyle='#222';ctx.fillRect(f.x-8,f.y-3,3,3);ctx.fillRect(f.x+6,f.y-3,3,3)});
+ctx.font='44px Arial';ctx.fillText(w.goal,w.length-115,420);ctx.restore();drawPlayer();
+if(paused){ctx.fillStyle='#142d4acc';ctx.fillRect(0,0,960,540);ctx.fillStyle='white';ctx.font='bold 48px Arial';ctx.textAlign='center';ctx.fillText('PAUSA',480,260);ctx.font='20px Arial';ctx.fillText('Presiona P para continuar',480,300);ctx.textAlign='left'}
+}
+function collide(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y}
+function update(){if(!playing||paused)return;frame++;if(player.inv>0)player.inv--;
+player.vx=(keys.right?4.1:0)-(keys.left?4.1:0);player.x+=player.vx;player.x=Math.max(0,Math.min(worlds[level].length-50,player.x));
+if(jumpQueued&&player.on){player.vy=-12.7;player.on=false}jumpQueued=false;player.vy+=gravity;player.y+=player.vy;player.on=false;
+for(let p of platforms){if(player.vy>=0&&player.x+player.w>p.x&&player.x<p.x+p.w&&player.y+player.h>=p.y&&player.y+player.h-player.vy<=p.y+8){player.y=p.y-player.h;player.vy=0;player.on=true}}
+stars.forEach(s=>{if(!s.got&&Math.abs((player.x+20)-s.x)<28&&Math.abs((player.y+25)-s.y)<34){s.got=true;score++;$('score').textContent='⭐ '+score}});
+foes.forEach(f=>{if(!f.alive)return;f.x+=f.v;if(f.x<f.min||f.x>f.max)f.v*=-1;if(collide({x:player.x+4,y:player.y+5,w:32,h:49},{x:f.x-18,y:f.y-17,w:36,h:34})){if(player.vy>1&&player.y+player.h-10<f.y){f.alive=false;player.vy=-8;score+=2;$('score').textContent='⭐ '+score}else if(player.inv===0){lives--;player.inv=90;player.vy=-7;$('lives').textContent='❤️'.repeat(lives)+'🖤'.repeat(3-lives);if(lives<=0)end(false)}}});
+if(player.y>600){lives--;player.x=Math.max(50,player.x-220);player.y=330;player.vy=0;player.inv=100;$('lives').textContent='❤️'.repeat(lives)+'🖤'.repeat(3-lives);if(lives<=0)end(false)}
+camera=Math.max(0,Math.min(worlds[level].length-960,player.x-330));
+if(player.x>worlds[level].length-160)end(true);
+}
+function loop(){if(!playing)return;update();draw();requestAnimationFrame(loop)}
+function pause(){if(!playing)return;paused=!paused;$('pauseBtn').textContent=paused?'▶':'Ⅱ';draw();if(!paused)loop()}
+$('startBtn').onclick=start;$('againBtn').onclick=start;$('homeBtn').onclick=()=>{playing=false;$('endPanel').classList.add('hidden');$('menu').classList.remove('hidden')};
+$('menuBtn').onclick=()=>{playing=false;$('hud').classList.add('hidden');$('menu').classList.remove('hidden')};$('pauseBtn').onclick=pause;
+document.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp',' '].includes(e.key))e.preventDefault();if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')keys.left=true;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')keys.right=true;if(e.key===' '||e.key==='ArrowUp'||e.key.toLowerCase()==='w')jumpQueued=true;if(e.key.toLowerCase()==='p')pause()});
+document.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')keys.left=false;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')keys.right=false});
+$('touch').querySelectorAll('button').forEach(b=>{let k=b.dataset.key;const down=e=>{e.preventDefault();if(k==='jump')jumpQueued=true;else keys[k]=true},up=e=>{e.preventDefault();if(k!=='jump')keys[k]=false};b.addEventListener('pointerdown',down);b.addEventListener('pointerup',up);b.addEventListener('pointerleave',up)});
+draw();
+})();
+</script>
+</body></html>
